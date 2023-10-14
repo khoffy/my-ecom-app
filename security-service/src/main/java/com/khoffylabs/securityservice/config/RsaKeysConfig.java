@@ -8,3 +8,4 @@ import java.security.interfaces.RSAPublicKey;
 @ConfigurationProperties(prefix = "rsa")
 public record RsaKeysConfig(RSAPublicKey publicKey, RSAPrivateKey privateKey) {
 }
+

@@ -20,10 +20,10 @@ import java.util.stream.Collectors;
 @Service
 public class AuthService {
 
-    private JwtEncoder jwtEncoder;
-    private JwtDecoder jwtDecoder;
-    private AuthenticationManager authenticationManager;
-    private UserDetailsService userDetailsService;
+    private final JwtEncoder jwtEncoder;
+    private final JwtDecoder jwtDecoder;
+    private final AuthenticationManager authenticationManager;
+    private final UserDetailsService userDetailsService;
 
     public AuthService(JwtEncoder jwtEncoder,
                           JwtDecoder jwtDecoder,
@@ -34,13 +34,11 @@ public class AuthService {
         this.authenticationManager = authenticationManager;
         this.userDetailsService = userDetailsService;
     }
-    private Map<String, String> idToken = new HashMap<>();
+    private final Map<String, String> idToken = new HashMap<>();
     public Map<String, String> jwtToken(
-
         String grantType, String username, String password, boolean withRefreshToken, String refreshToken) {
 
-            String subject = null;
-            String scope = null;
+            String subject = null; String scope = null;
 
             if(grantType.equals("password")) {
                 Authentication authentication = authenticationManager.authenticate(
@@ -48,7 +46,7 @@ public class AuthService {
                 );
                 subject = authentication.getName();
                 scope = authentication.getAuthorities().stream()
-                        .map(auth -> auth.getAuthority())
+                        .map(GrantedAuthority::getAuthority)
                         .collect(Collectors.joining(" "));
             } else if (grantType.equals("refreshToken")) {
                 if(Objects.isNull(refreshToken)) {
@@ -63,14 +61,14 @@ public class AuthService {
 
                 subject = decodeJwt.getSubject();    // Get the username
                 UserDetails userDetails = userDetailsService.loadUserByUsername(subject);
-                // Get user's roles
                 Collection<? extends GrantedAuthority> authorities = userDetails.getAuthorities();
-                // Get user's scope
-                scope = authorities.stream().map(auth -> auth.getAuthority())
+                scope = authorities.stream().map(GrantedAuthority::getAuthority)
                         .collect(Collectors.joining(" "));
             }
 
             Instant instant = Instant.now();
+
+            assert subject != null;
 
             JwtClaimsSet jwtClaimsSet = JwtClaimsSet.builder()
                     .subject(subject)
@@ -91,9 +89,13 @@ public class AuthService {
                         .issuer("security-service")
                         //.claim("scope", scope)    # no need to send user's roles for refresh token
                         .build();
-                String jwtRefreshToken = jwtEncoder.encode(JwtEncoderParameters.from(jwtClaimsSetRefresh)).getTokenValue();
+                String jwtRefreshToken = jwtEncoder
+                        .encode(JwtEncoderParameters.from(jwtClaimsSetRefresh))
+                        .getTokenValue();
+
                 idToken.put("refreshToken", jwtRefreshToken);
             }
             return idToken;
     }
 }
+

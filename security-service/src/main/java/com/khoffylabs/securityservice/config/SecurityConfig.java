@@ -12,10 +12,10 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.ProviderManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.Customizer;
-import org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.annotation.web.configurers.oauth2.server.resource.OAuth2ResourceServerConfigurer;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -29,11 +29,11 @@ import org.springframework.security.web.SecurityFilterChain;
 
 @Configuration
 @EnableWebSecurity
-@EnableGlobalMethodSecurity(prePostEnabled = true)
+@EnableMethodSecurity
 public class SecurityConfig {
 
-    private RsaKeysConfig rsaKeysConfig;
-    private PasswordEncoder passwordEncoder;
+    private final RsaKeysConfig rsaKeysConfig;
+    private final PasswordEncoder passwordEncoder;
 
     public SecurityConfig(RsaKeysConfig rsaKeysConfig, PasswordEncoder passwordEncoder) {
         this.rsaKeysConfig = rsaKeysConfig;
@@ -53,18 +53,22 @@ public class SecurityConfig {
     public UserDetailsService inMemoryUserDetailsManager() {
         return new InMemoryUserDetailsManager(
                 // noop == no password encoder
-                User.withUsername("user1").password(passwordEncoder.encode("1234")).authorities("USER").build(),
-                User.withUsername("user2").password(passwordEncoder.encode("1234")).authorities("USER").build(),
-                User.withUsername("admin").password(passwordEncoder.encode("1234")).authorities("USER", "ADMIN").build()
+                User.withUsername("user1").password(passwordEncoder.encode("1234"))
+                        .authorities("USER").build(),
+                User.withUsername("user2").password(passwordEncoder.encode("1234"))
+                        .authorities("USER").build(),
+                User.withUsername("admin").password(passwordEncoder.encode("1234"))
+                        .authorities("USER", "ADMIN").build()
                 );
     }
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity httpSecurity) throws Exception {
         return httpSecurity
-                .csrf(csrf -> csrf.disable())
-                .authorizeRequests(auth -> auth.requestMatchers("/token/**").permitAll())
-                .authorizeRequests(auth -> auth.anyRequest().authenticated())
+                .authorizeHttpRequests(Customizer.withDefaults())
+                .csrf(AbstractHttpConfigurer::disable)
+                .authorizeHttpRequests(auth -> auth.requestMatchers("/token/**").permitAll())
+                .authorizeHttpRequests(auth -> auth.anyRequest().authenticated())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .oauth2ResourceServer(rs -> rs.jwt(Customizer.withDefaults()))
                 .httpBasic(Customizer.withDefaults())
